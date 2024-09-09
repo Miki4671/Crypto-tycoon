@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en"> 
+<head> 
+    <meta charset="UTF-8"> 
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
+    <title>Crypto Miner Simulator</title> 
+    <style>
+        /* CSS */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        .loading-screen {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-color: #000;
+            color: #fff;
+            position: absolute;
+            width: 100%;
+            top: 0;
+            left: 0;
+        }
+
+        .loader {
+            border: 16px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 16px solid #3498db;
+            width: 120px;
+            height: 120px;
+            animation: spin 2s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .main-content {
+            display: none;
+            padding: 20px;
+        }
+
+        .miner-area {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+
+        .character-container {
+            position: relative;
+        }
+
+        .computer {
+            width: 150px;
+        }
+
+        .interactive {
+            cursor: pointer;
+        }
+
+        .rack {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 20px;
+        }
+
+        .gpu-slots, .cpu-slots {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .gpu, .cpu {
+            width: 100px;
+            cursor: pointer;
+        }
+
+        .info-panel {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .info-panel button {
+            margin: 5px;
+            padding: 10px;
+        }
+
+        /* Market styling */
+        .market {
+            display: none;
+            padding: 20px;
+            border: 1px solid #ccc;
+            background-color: #f9f9f9;
+            max-height: 400px;
+            overflow-y: auto; /* Scroll bar if content overflows */
+        }
+
+        /* Inventory styling */
+        .inventory {
+            padding: 20px;
+            border: 1px solid #ccc;
+            background-color: #f9f9f9;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .inventory-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            background-color: #fff;
+        }
+    </style> 
+</head> 
+<body> 
+    <div id="loading-screen" class="loading-screen"> 
+        <div class="loader"></div> 
+        <h1>Crypto Miner Simulator</h1> 
+        <p>Loading...</p> 
+    </div> 
+    <div id="main-content" class="main-content"> 
+        <div class="miner-area character-container"> 
+            <img src="computer.png" alt="Computer" class="computer"> 
+            <img src="character.png" alt="Character sitting at computer" id="character" class="interactive character"> 
+            <div class="rack"> 
+                <img src="rack.png" alt="Rack for GPU, CPU and Mining Rig" class="rack-img"> 
+                <div id="gpus" class="gpu-slots"> <!-- Slots for GPUs will be dynamically added here --> 
+                </div> 
+                <div id="cpus" class="cpu-slots"> <!-- Slots for CPUs will be dynamically added here --> 
+                </div> 
+                <div id="rigs" class="cpu-slots"> <!-- Slot for Mining Rig will be dynamically added here --> 
+                </div> 
+            </div> 
+        </div> 
+        <div class="info-panel"> 
+            <p>Balance: <span id="balance">0.0000000 ANT</span></p> 
+            <p>FC Balance: <span id="fc-balance">0 FC</span></p> 
+            <button id="claimBonus">Claim Bonus</button> 
+            <button id="marketButton">Open Market</button> 
+            <button id="buyRig">Buy Mining Rig</button> 
+            <div id="market" class="market"> <!-- Buttons for GPUs, CPUs, and Mining Machine will be added here --> 
+            </div> 
+            <div id="inventory" class="inventory"> 
+                <h2>Inventory</h2> <!-- Inventory items will be added here --> 
+            </div> 
+        </div> 
+    </div> 
+    <script>
+        // JavaScript
+        window.onload = function() {
+            const characterElement = document.getElementById('character');
+            const claimBonusButton = document.getElementById('claimBonus');
+            const balanceElement = document.getElementById('balance');
+            const fcBalanceElement = document.getElementById('fc-balance');
+            const marketButton = document.getElementById('marketButton');
+            const buyRigButton = document.getElementById('buyRig');
+            const marketDiv = document.getElementById('market');
+            const gpusContainer = document.getElementById('gpus');
+            const cpusContainer = document.getElementById('cpus');
+            const rigsContainer = document.getElementById('rigs');
+            const inventoryDiv = document.getElementById('inventory');
+            const loadingScreen = document.getElementById('loading-screen');
+            const mainContent = document.getElementById('main-content');
+
+            let balance = 0.0000000;
+            let fcBalance = 0;
+            let clickValue = 0.0000010; // Default click value
+            let gpuPrices = [0.0000500, 0.0001000, 0.0001500, 0.0002000, 0.0002500];
+            let cpuPrices = [0.0000500, 0.0001000, 0.0001500, 0.0002000, 0.0002500];
+            let rigPrice = 0.0005000; // Price of the Mining Rig
+            let miningMachinePrice = 100; // Price of Mining Machine in FC
+            let miningMachineReward = 7; // FC reward per 100 clicks with Mining Machine
+            let hasRig = false;
+            let fcPerClick = 0;
+            let lastClaimDate = localStorage.getItem('lastClaimDate');
+            let clickCount = 0;
+
+            function updateBalance() {
+                balanceElement.innerText = balance.toFixed(7) + ' ANT';
+            }
+
+            function updateFCBalance() {
+                fcBalanceElement.innerText = fcBalance + ' FC';
+            }
+
+            function claimBonus() {
+                const now = new Date();
+                const lastClaimTime = new Date(lastClaimDate);
+
+                if (!lastClaimDate || (now - lastClaimTime) >= 24 * 60 * 60 * 1000) {
+                    balance += 0.0000100;
+                    lastClaimDate = now.toString();
+                    localStorage.setItem('lastClaimDate', lastClaimDate);
+                    updateBalance();
+                } else {
+                    alert('You can only claim the bonus once every 24 hours.');
+                }
+            }
+
+            function handleCharacterClick() {
+                clickCount++;
+                balance += clickValue;
+                updateBalance();
+
+                if (clickCount % 100 === 0) {
+                    fcBalance += 1;
+                    updateFCBalance();
+
+                    if (fcPerClick > 0) {
+                        fcBalance += miningMachineReward;
+                        updateFCBalance();
+                    }
+                }
+            }
+
+            function buyItem(price, type, index) {
+                if (balance >= price) {
+                    balance -= price;
+                    updateBalance();
+                    addToInventory(type, index);
+                    if (type === 'GPU') {
+                        clickValue += 0.0000100; // Example increment for GPU
+                    } else if (type === 'CPU') {
+                        clickValue += 0.0000100; // Example increment for CPU
+                    }
+                    return true;
+                }
+                return false;
+            }
+
+            
+</script></body></html>
